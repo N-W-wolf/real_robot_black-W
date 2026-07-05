@@ -55,6 +55,7 @@ private:
 
         auto out = *msg;
         sample_count_++;
+        output_count_++;
 
         if (has_last_stamp_) {
             const double dt = (rclcpp::Time(msg->header.stamp) - last_stamp_).seconds();
@@ -104,12 +105,18 @@ private:
 
         const auto now = this->now();
         if (!has_last_log_ || (now - last_log_time_).seconds() >= log_period_) {
+            const uint64_t sample_delta = sample_count_ - last_log_sample_count_;
+            const uint64_t output_delta = output_count_ - last_log_output_count_;
+            const uint64_t bad_delta = bad_sample_count_ - last_log_bad_sample_count_;
             last_log_time_ = now;
             has_last_log_ = true;
-            RCLCPP_DEBUG(
+            last_log_sample_count_ = sample_count_;
+            last_log_output_count_ = output_count_;
+            last_log_bad_sample_count_ = bad_sample_count_;
+            RCLCPP_INFO(
                 this->get_logger(),
-                "VQF samples=%lu bad=%lu acc_norm=%.3f quat=[%.6f %.6f %.6f %.6f]",
-                sample_count_, bad_sample_count_, acc_norm,
+                "VQF monitor: input=%lu output=%lu bad=%lu total_input=%lu total_output=%lu acc_norm=%.3f quat=[%.6f %.6f %.6f %.6f]",
+                sample_delta, output_delta, bad_delta, sample_count_, output_count_, acc_norm,
                 out.orientation.w, out.orientation.x, out.orientation.y, out.orientation.z);
         }
     }
@@ -130,7 +137,11 @@ private:
     vqf_real_t last_quat_[4] = {1.0, 0.0, 0.0, 0.0};
     bool has_last_quat_ = false;
     uint64_t sample_count_ = 0;
+    uint64_t output_count_ = 0;
     uint64_t bad_sample_count_ = 0;
+    uint64_t last_log_sample_count_ = 0;
+    uint64_t last_log_output_count_ = 0;
+    uint64_t last_log_bad_sample_count_ = 0;
 };
 
 int main(int argc, char** argv) {

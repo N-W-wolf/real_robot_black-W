@@ -12,6 +12,7 @@
 #include <mutex>
 #include <cstring>
 #include <array>
+#include <chrono>
 #include "rclcpp/rclcpp.hpp"
 #include "utils/set_zero.h"
 #include "utils/secure_protect.hpp"
@@ -190,13 +191,15 @@ private:
     void _sendRecvMotorGroup(std::vector<MotorCmd> &motorCmdGroup_, std::vector<MotorData> &motorDataGroup_,
                         int legIndex, SerialPort &port){
     std::vector<MotorCmd> localCmd;
-    std::vector<MotorData> localState;
-    // 先分配空间防止 sendRecv 失败
-    localCmd.resize(jointNum);
-    localState.resize(jointNum);
-    while(running_){
-        // 1. 初始化 Offset (保持不变)
-        if(!is_offset_initialized_[legIndex]){
+	    std::vector<MotorData> localState;
+	    // 先分配空间防止 sendRecv 失败
+	    localCmd.resize(jointNum);
+	    localState.resize(jointNum);
+	    const auto motor_loop_period = std::chrono::milliseconds(2);
+	    while(running_){
+	        const auto loop_start = std::chrono::steady_clock::now();
+	        // 1. 初始化 Offset (保持不变)
+	        if(!is_offset_initialized_[legIndex]){
             // A. 先准备一组“空指令”（零力矩），仅用于获取状态
             // 【修正点】：必须使用索引循环，显式赋值 id
             for(int j = 0; j < jointNum; j++){
@@ -223,13 +226,14 @@ private:
                 
                 is_offset_initialized_[legIndex] = true;
                 RCLCPP_INFO(rclcpp::get_logger("SerialPack"), "Motor Offsets Initialized!");
-            } else {
-                // 如果通信失败，不标记为初始化成功，下一轮循环重试
-                RCLCPP_WARN(rclcpp::get_logger("SerialPack"), "Failed to read initial motor state, retrying...");
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-            continue;
-        }
+	            } else {
+	                // 如果通信失败，不标记为初始化成功，下一轮循环重试
+	                RCLCPP_WARN(rclcpp::get_logger("SerialPack"), "Failed to read initial motor state, retrying...");
+	                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	            }
+	            std::this_thread::sleep_until(loop_start + motor_loop_period);
+	            continue;
+	        }
 
         // 2. 复制指令 (保持锁机制)
         {
@@ -256,12 +260,13 @@ private:
             //utils::SafetyStateManager::getInstance().setIsSafe(false);
             RCLCPP_ERROR(rclcpp::get_logger("SerialPack"), "sendRecv failed"); 
         }
-        {
-            std::lock_guard<std::mutex> lock_state(stateMutex_[legIndex]);
-            motorDataGroup_.assign(localState.begin(), localState.end());
-        }
-    }
-}
+	        {
+	            std::lock_guard<std::mutex> lock_state(stateMutex_[legIndex]);
+	            motorDataGroup_.assign(localState.begin(), localState.end());
+	        }
+	        std::this_thread::sleep_until(loop_start + motor_loop_period);
+	    }
+	}
     std::vector<std::unique_ptr<SerialPort>> legPorts_;
     std::vector<std::mutex> cmdMutex_{legNum};
     std::vector<std::mutex> stateMutex_{legNum};

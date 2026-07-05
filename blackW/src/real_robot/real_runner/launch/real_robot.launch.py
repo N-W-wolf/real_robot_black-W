@@ -5,7 +5,7 @@ from launch.actions import IncludeLaunchDescription # 关键库 2
 from launch.launch_description_sources import PythonLaunchDescriptionSource # 关键库 3
 from launch_ros.actions import Node
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution, Command
 from launch_ros.actions import Node
@@ -72,8 +72,7 @@ def generate_launch_description():
     return LaunchDescription([
         rname_arg,
         imu_launch_include,  # 启动 IMU
-        imu_vqf_filter_node,  # IMU 姿态滤波
-        real_runner_node,    # 启动主控
-        middleware_node,      # 启动中间件
-        param_node
+        TimerAction(period=3.0, actions=[imu_vqf_filter_node]),  # IMU 姿态滤波
+        TimerAction(period=5.0, actions=[real_runner_node]),    # 启动主控
+        TimerAction(period=6.0, actions=[middleware_node, param_node]),      # 启动中间件
     ])

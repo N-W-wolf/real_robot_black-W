@@ -63,7 +63,7 @@ def generate_launch_description():
     return LaunchDescription([
         rname_arg,
         ag_launch_include,
-        TimerAction(period=2.0, actions=[real_runner_launch_include]),
-        TimerAction(period=4.0, actions=[imu_launch_include]),
-        TimerAction(period=5.0, actions=[middleware_node, param_node]),
+        TimerAction(period=3.0, actions=[imu_launch_include]),
+        TimerAction(period=5.0, actions=[real_runner_launch_include]),
+        TimerAction(period=6.0, actions=[middleware_node, param_node]),
     ])

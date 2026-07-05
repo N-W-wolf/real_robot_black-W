@@ -19,7 +19,7 @@ def generate_launch_description():
                 {"ConnectionType": 0},
                 
 				#串口设备串  defaule: /dev/ttyACM0 /dev/IMU_Link
-                {"UART_Port": "/dev/ttyACM0"},
+                {"UART_Port": "/dev/IMU_Link"},
 				#串口波特率  default: 115200
                 {"UART_Baudrate": 460800},
                 #latency_timer :1 ~ 16, default:16 
