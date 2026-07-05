@@ -26,7 +26,7 @@ AgRosNode::AgRosNode() : Node("AgROS")
 }
 void AgRosNode::initImuNode()
 {
-    AGLOGI("AgROS");
+    AGLOGD("AgROS");
 
     /* all parameter declare and init here */
     this->declare_parameter<int>("ConnectionType", 1);
@@ -39,7 +39,7 @@ void AgRosNode::initImuNode()
     this->declare_parameter<int>("USB_LatencyTime" , 16);
     /* log */
     this->declare_parameter<std::string>("mLogPath", ".");
-    this->declare_parameter<int>("LogLevel", 1);
+    this->declare_parameter<int>("LogLevel", 2);
     /* range */
     this->declare_parameter<float>("Grange04", 250.0);
     this->declare_parameter<float>("Arange04", 4.0);
@@ -60,7 +60,7 @@ void AgRosNode::initImuNode()
 
     /* set log config */
     std::string Path = "";
-    int32_t logLevel = 1;
+    int32_t logLevel = 2;
     this->get_parameter("mLogPath",Path);
     std::filesystem::path p = Path;
     if(p.string().back() == '/')
@@ -80,20 +80,19 @@ void AgRosNode::initImuNode()
     }
     catch(const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
-        std::cout << "error mLogPath: " << mLogPath << std::endl;
+        RCLCPP_ERROR(this->get_logger(), "error mLogPath: %s: %s", mLogPath.c_str(), e.what());
         mLogPath = "./AgROSLog";
-        std::cout << "reset Log path: " << mLogPath << std::endl;
+        RCLCPP_DEBUG(this->get_logger(), "reset Log path: %s", mLogPath.c_str());
         if(!std::filesystem::exists(mLogPath))
         {
             std::filesystem::create_directories(mLogPath);
         }
     }    
     this->get_parameter("LogLevel",logLevel);
-    std::cout << "Curr mLogPath: " << mLogPath << std::endl;
+    RCLCPP_DEBUG(this->get_logger(), "Curr mLogPath: %s", mLogPath.c_str());
     TinyLog::setStorageDir((mLogPath+"/AgROSRun.log").c_str());
     TinyLog::setStorageLevel(logLevel);
-    //AGLOGI("%s",copyright.c_str());
+    //AGLOGD("%s",copyright.c_str());
     if(logLevel == 0)
     {
         mIsPrintLog = true;
@@ -103,7 +102,7 @@ void AgRosNode::initImuNode()
         std::ostringstream oss;
         oss << std::put_time(ptm, "%Y%m%d-%H%M%S");
         std::string filename = mLogPath + std::string("/AgROSDatAGLOG-") + oss.str() + std::string(".log");
-        AGLOGI("IMU Log: %s",filename.c_str());
+        AGLOGD("IMU Log: %s",filename.c_str());
         mLogFileFd = fopen(filename.c_str(), "wb+");
         if (mLogFileFd == nullptr)
         {
@@ -178,7 +177,7 @@ void AgRosNode::openSerialPort()
 
     if (mSerialDev.isOpen())
     {
-        AGLOGI("mSerialDevial opened successfully!");
+        AGLOGD("mSerialDevial opened successfully!");
     }
     else 
     {
@@ -245,7 +244,7 @@ void AgRosNode::bindUdp()
     else
     {
         mIsBind = true;
-        AGLOGI("UDP bind %s:%d success!" , mUdpAddr.c_str() , mUdpPort);
+        AGLOGD("UDP bind %s:%d success!" , mUdpAddr.c_str() , mUdpPort);
     }
 }
 void AgRosNode::readUdp()
@@ -284,7 +283,7 @@ void AgRosNode::period1msMonitor()
     {
         mPeriod1msCnt = 0;
         mRunTime1s++;
-        RCLCPP_INFO(
+        RCLCPP_DEBUG(
             this->get_logger(),
             "IMU monitor: runtime=%lu serial_bytes=%lu udp_bytes=%lu imu_frames=%lu",
             mRunTime1s,

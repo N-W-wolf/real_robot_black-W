@@ -113,7 +113,7 @@ private:
             last_log_sample_count_ = sample_count_;
             last_log_output_count_ = output_count_;
             last_log_bad_sample_count_ = bad_sample_count_;
-            RCLCPP_INFO(
+            RCLCPP_DEBUG(
                 this->get_logger(),
                 "VQF monitor: input=%lu output=%lu bad=%lu total_input=%lu total_output=%lu acc_norm=%.3f quat=[%.6f %.6f %.6f %.6f]",
                 sample_delta, output_delta, bad_delta, sample_count_, output_count_, acc_norm,

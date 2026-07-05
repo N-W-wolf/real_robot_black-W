@@ -241,7 +241,7 @@ private:
             motorDataGroup[wheelJointIndex] = wheelState[0];
         }
 
-        RCLCPP_INFO(rclcpp::get_logger("SerialPack"), "Wheel motor initialized: leg=%d, id=%d", legIndex, wheel_id);
+        RCLCPP_DEBUG(rclcpp::get_logger("SerialPack"), "Wheel motor initialized: leg=%d, id=%d", legIndex, wheel_id);
         return true;
     }
 
@@ -291,7 +291,7 @@ private:
                 }
 
                 is_offset_initialized_[legIndex] = true;
-                RCLCPP_INFO(rclcpp::get_logger("SerialPack"), "Motor Offsets Initialized!");
+                RCLCPP_DEBUG(rclcpp::get_logger("SerialPack"), "Motor Offsets Initialized!");
 	            } else {
 	                // 如果通信失败，不标记为初始化成功，下一轮循环重试
 	                RCLCPP_WARN(rclcpp::get_logger("SerialPack"), "Failed to read initial motor state, retrying...");

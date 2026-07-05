@@ -93,7 +93,7 @@ class WheelLinkTester(Node):
 
         self.timer = self.create_timer(1.0 / self.rate, self._timer_callback)
 
-        self.get_logger().info(
+        self.get_logger().debug(
             f'wheel_link_tester mode={self.mode} wheel={self.wheel} '
             f'ros_index={WHEEL_INDICES[self.wheel]} speed={self.speed:.3f} '
             f'kd={self.kd:.3f} duration={self.duration:.2f}s '
@@ -101,7 +101,7 @@ class WheelLinkTester(Node):
             f'unexpected_consecutive={self.unexpected_consecutive} '
             f'unexpected_grace={self.unexpected_grace:.2f}s'
         )
-        self.get_logger().info(
+        self.get_logger().debug(
             f'publishing {MOTOR_COUNT}-way RobotCommand to {COMMAND_TOPIC}; '
             f'subscribing RobotState from {STATE_TOPIC}'
         )
@@ -162,7 +162,7 @@ class WheelLinkTester(Node):
         if state_size != self.last_state_size:
             self.last_state_size = state_size
             if state_size == MOTOR_COUNT:
-                self.get_logger().info(f'received RobotState with {state_size} motors')
+                self.get_logger().debug(f'received RobotState with {state_size} motors')
                 self.invalid_state_logged = False
             else:
                 self.get_logger().error(
@@ -280,21 +280,21 @@ class WheelLinkTester(Node):
 
         target_indices = self._target_indices(self.current_stage)
         if self.current_stage.kind == 'passive':
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'stage {self.current_stage_index + 1}/{len(self.stages)}: '
                 f'{self.current_stage.name} for {self.current_stage.duration:.2f}s; '
                 'publishing zero commands. Manually rotate wheels and confirm '
                 f'feedback indexes {list(WHEEL_INDICES)}.'
             )
         elif target_indices:
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'stage {self.current_stage_index + 1}/{len(self.stages)}: '
                 f'{self.current_stage.name} for {self.current_stage.duration:.2f}s; '
                 f'target ros indexes={target_indices} dq={self.speed:.3f} '
                 f'kd={self.kd:.3f}'
             )
         else:
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'stage {self.current_stage_index + 1}/{len(self.stages)}: '
                 f'{self.current_stage.name} for {self.current_stage.duration:.2f}s; '
                 'publishing 16-way zero command'
@@ -318,7 +318,7 @@ class WheelLinkTester(Node):
                 )
                 return
 
-        self.get_logger().info(f'stage complete: {self.current_stage.name}')
+        self.get_logger().debug(f'stage complete: {self.current_stage.name}')
         self.current_stage = None
         self.stage_started_at = None
         self._start_next_stage(now)
@@ -426,7 +426,7 @@ class WheelLinkTester(Node):
                 non_target_max_index = index
 
         stage_name = self.current_stage.name if self.current_stage else 'stopping'
-        self.get_logger().info(
+        self.get_logger().debug(
             f'{stage_name} | {" ".join(wheel_parts)} | '
             f'max non-target idx={non_target_max_index} dq={non_target_max_dq:+.3f}'
         )
@@ -442,7 +442,7 @@ class WheelLinkTester(Node):
         if self.stop_until is None:
             self.stop_until = now + SHUTDOWN_ZERO_SEC
             self._publish_zero()
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'publishing zero command for {SHUTDOWN_ZERO_SEC:.2f}s before shutdown'
             )
 
@@ -455,7 +455,7 @@ def main(args=None):
         rclpy.spin(node)
     except KeyboardInterrupt:
         if node is not None:
-            node.get_logger().info('interrupted; publishing shutdown zero commands')
+            node.get_logger().debug('interrupted; publishing shutdown zero commands')
             node.publish_zero_for(SHUTDOWN_ZERO_SEC)
     except Exception:
         if node is not None:

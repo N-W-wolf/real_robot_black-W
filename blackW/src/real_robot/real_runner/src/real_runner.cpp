@@ -43,7 +43,7 @@ public:
                     RCLCPP_ERROR(this->get_logger(), "IMU 节点已掉线或未启动！");
                     imu_alive_ = false;
                 } else {
-                    RCLCPP_INFO(this->get_logger(), "IMU 节点已上线");
+                    RCLCPP_DEBUG(this->get_logger(), "IMU 节点已上线");
                     imu_alive_ = true;
                 }
             };
@@ -77,7 +77,7 @@ private:
         imu_timeout_strikes_.store(0, std::memory_order_relaxed);
 
         if (first_imu) {
-            RCLCPP_INFO(this->get_logger(), "收到第一帧 IMU，等待数据流稳定后启用超时监控。");
+            RCLCPP_DEBUG(this->get_logger(), "收到第一帧 IMU，等待数据流稳定后启用超时监控。");
         } else if (!was_alive) {
             RCLCPP_WARN(this->get_logger(), "IMU 数据恢复，已清除超时计数；安全状态保持当前保护逻辑。");
         }
@@ -90,7 +90,7 @@ private:
                     imu_stable_frame_count_.fetch_add(1, std::memory_order_relaxed) + 1;
                 if (stable_count >= IMU_STABLE_FRAME_REQUIRED &&
                     !imu_timeout_monitor_enabled_.exchange(true, std::memory_order_relaxed)) {
-                    RCLCPP_INFO(
+                    RCLCPP_DEBUG(
                         this->get_logger(),
                         "IMU 数据流已稳定，启用超时监控。");
                 }
@@ -261,12 +261,12 @@ int main(int argc, char **argv) {
     rclcpp::spin(node);
 #else
     auto node = std::make_shared<rclcpp::Node>("motor_calibration_node");
-    RCLCPP_INFO(node->get_logger(), "Starting Motor Calibration...");
-    RCLCPP_INFO(node->get_logger(), "Instructions:");
-    RCLCPP_INFO(node->get_logger(), "  Type 's' + Enter: Record STRAIGHT position (站立/伸直姿态)");
-    RCLCPP_INFO(node->get_logger(), "  Type 'c' + Enter: Record CREEP position (趴下/蹲伏姿态)");
-    RCLCPP_INFO(node->get_logger(), "  Type 'm' + Enter: Show recorded positions (打印当前记录)");
-    RCLCPP_INFO(node->get_logger(), "  Type 'q' + Enter: Quit");
+    RCLCPP_DEBUG(node->get_logger(), "Starting Motor Calibration...");
+    RCLCPP_DEBUG(node->get_logger(), "Instructions:");
+    RCLCPP_DEBUG(node->get_logger(), "  Type 's' + Enter: Record STRAIGHT position (站立/伸直姿态)");
+    RCLCPP_DEBUG(node->get_logger(), "  Type 'c' + Enter: Record CREEP position (趴下/蹲伏姿态)");
+    RCLCPP_DEBUG(node->get_logger(), "  Type 'm' + Enter: Show recorded positions (打印当前记录)");
+    RCLCPP_DEBUG(node->get_logger(), "  Type 'q' + Enter: Quit");
 
     motor_zero calibrator;
     calibrator.record_position();

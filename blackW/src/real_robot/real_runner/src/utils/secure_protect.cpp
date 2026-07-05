@@ -10,7 +10,7 @@ void SafetyStateManager::setIsSafe(bool safe) {
     if (!safe && previous_safe) {
         RCLCPP_ERROR(rclcpp::get_logger("SafetyStateManager"), ">>> 安全监控：切换至阻尼模式 (失衡)! <<<");
     } else if (safe && !previous_safe) {
-        RCLCPP_INFO(rclcpp::get_logger("SafetyStateManager"), "<<< 安全监控：机器人恢复平衡。 >>>");
+        RCLCPP_DEBUG(rclcpp::get_logger("SafetyStateManager"), "<<< 安全监控：机器人恢复平衡。 >>>");
     }
 }
 

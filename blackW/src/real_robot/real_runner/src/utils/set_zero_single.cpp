@@ -18,7 +18,7 @@ void motor_zero::save_calibration_file()
         file << "\n";
         
         file.close();
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "校准参数已保存至: %s", CALIBRATION_FILE.c_str());
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "校准参数已保存至: %s", CALIBRATION_FILE.c_str());
     } 
     else 
     {
@@ -41,7 +41,7 @@ bool motor_zero::load_calibration_file()
             if (!(file >> creep_position_[i])) return false;
         }
         file.close();
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "成功加载校准文件!");
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "成功加载校准文件!");
         return true;
     }
     RCLCPP_WARN(rclcpp::get_logger("motor_zero"), "未找到校准文件，使用默认值(0.0)");
@@ -74,14 +74,14 @@ void motor_zero::get_motor_offset(const std::vector<MotorData> &motor_state,int 
 
         // 计算直接差值
         double diff  = current_val - calibration_val;
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Motor %d Current Pos: %f, Calibration Pos: %f, Diff: %f", i+leg_id*3, current_val, calibration_val, diff);
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Motor %d Current Pos: %f, Calibration Pos: %f, Diff: %f", i+leg_id*3, current_val, calibration_val, diff);
         // [优化] 计算差了多少个整圈(四舍五入)
         int rounds = std::round(diff / (2 * M_PI));
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Motor %d Rounds: %d", i+leg_id*3, rounds);
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Motor %d Rounds: %d", i+leg_id*3, rounds);
         // 计算补偿量
         // off_set_ 记录的是：为了对齐到标定相位，需要补偿的值
         off_set_[i+leg_id*3] = -rounds * 2 * M_PI;
-        //RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Motor %d Offset set to: %f", i, off_set_[i]);
+        //RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Motor %d Offset set to: %f", i, off_set_[i]);
     }
 }
 
@@ -110,24 +110,24 @@ void motor_zero::record_position(){
         while(std::cin>>c){
             if(c=='s'){
                 set_straight_position = true;
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "set straight position");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "set straight position");
             }
             else if(c=='c'){
                 set_creep_position = true;
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "set creep position");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "set creep position");
             }
             else if(c=='m'){
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "straight position:");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "straight position:");
                 for(int i=0;i<motor_num;i++){
-                    RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "%f ", straight_position_[i]);
+                    RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "%f ", straight_position_[i]);
                 }
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "creep position:");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "creep position:");
                 for(int i=0;i<motor_num;i++){
-                    RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "%f ", creep_position_[i]);
+                    RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "%f ", creep_position_[i]);
                 }
             }
             else if(c=='q'){
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "exit record thread");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "exit record thread");
                 exit_thread = true;
                 break;
             }

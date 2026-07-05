@@ -104,14 +104,14 @@ class JointDefaultPose(Node):
 
         self.timer = self.create_timer(1.0 / self.rate, self._timer_callback)
 
-        self.get_logger().info(
+        self.get_logger().debug(
             f'publishing {MOTOR_COUNT}-way interpolated joint pose command to '
             f'{self.topic} at {self.rate}Hz; subscribing state from '
             f'{self.state_topic}; duration={self.duration:.2f}s '
             f'kp={self.kp:.3f} kd={self.kd:.3f} '
             f'passive_kd={self.passive_kd:.3f}'
         )
-        self.get_logger().info(
+        self.get_logger().debug(
             'joint slots: '
             + ', '.join(
                 f'{index}:{name}={q:.4f}'
@@ -119,7 +119,7 @@ class JointDefaultPose(Node):
             )
             + f'; wheel slots zeroed: {list(WHEEL_INDICES)}'
         )
-        self.get_logger().info(
+        self.get_logger().debug(
             "keyboard: press 'g' to start interpolation, 's' for passive, "
             'Ctrl+C to exit'
         )
@@ -155,7 +155,7 @@ class JointDefaultPose(Node):
         if state_size != self.last_state_size:
             self.last_state_size = state_size
             if state_size == MOTOR_COUNT:
-                self.get_logger().info(f'received RobotState with {state_size} motors')
+                self.get_logger().debug(f'received RobotState with {state_size} motors')
                 self.invalid_state_logged = False
             else:
                 self.get_logger().error(
@@ -218,7 +218,7 @@ class JointDefaultPose(Node):
             for index in DEFAULT_JOINT_TARGETS
         }
 
-        self.get_logger().info(
+        self.get_logger().debug(
             'starting %.2fs interpolation from current state to default joint pose'
             % self.duration
         )
@@ -349,7 +349,7 @@ class JointDefaultPose(Node):
             with self.lock:
                 if self.control_state == CONTROL_MOVE:
                     self.control_state = CONTROL_HOLD
-            self.get_logger().info('default joint pose reached; holding position')
+            self.get_logger().debug('default joint pose reached; holding position')
 
     def start_moving(self):
         if not self._state_is_ready(time.monotonic()):
@@ -360,18 +360,18 @@ class JointDefaultPose(Node):
             self._reset_ramp()
             self.control_state = CONTROL_MOVE
 
-        self.get_logger().info('starting soft interpolation command')
+        self.get_logger().debug('starting soft interpolation command')
 
     def return_to_passive(self):
         with self.lock:
             self.control_state = CONTROL_PASSIVE
             self._reset_ramp()
 
-        self.get_logger().info('switched to passive command')
+        self.get_logger().debug('switched to passive command')
 
     def request_shutdown(self):
         self.shutdown_requested = True
-        self.get_logger().info('shutdown requested; publishing zero commands')
+        self.get_logger().debug('shutdown requested; publishing zero commands')
         self.publish_zero_for(SHUTDOWN_ZERO_SEC)
         if rclpy.ok():
             rclpy.shutdown()
@@ -415,7 +415,7 @@ def main(args=None):
         rclpy.spin(node)
     except KeyboardInterrupt:
         if node is not None:
-            node.get_logger().info('interrupted; publishing shutdown zero commands')
+            node.get_logger().debug('interrupted; publishing shutdown zero commands')
             node.publish_zero_for(SHUTDOWN_ZERO_SEC)
     except Exception:
         if node is not None:

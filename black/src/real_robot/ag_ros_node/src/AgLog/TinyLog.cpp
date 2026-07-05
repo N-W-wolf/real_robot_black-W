@@ -21,7 +21,7 @@
 namespace AG{
 namespace ROSNode{
 
-int TinyLog::storageLevel = TinyLog::INFO; /* storage to file , default INFO */
+int TinyLog::storageLevel = TinyLog::WARNING; /* storage to file , default WARNING */
 
 int TinyLog::singleMaxSize = 10485760; /* unit��Byte��default 10MB */
 

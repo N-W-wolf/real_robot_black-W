@@ -46,7 +46,7 @@ def generate_launch_description():
                 #{"LogInfo":"debug.log"},
                 #设置日志打印等级：DEBUG:0 (save imu rawdata),INFO:1,WARNING:2,ERROR:3,FATAL:4
                 #default:INFO
-                {"LogLevel":1},
+                {"LogLevel":2},
 
                 #设置Data_IMU 发布频率分频系数(基础频率为100Hz(10ms间隔)，均匀抽样, 设置后频率为  1000/(10*N) Hz, 设置0时不输出)
                 {"IMUFreqFactor":   1}, 

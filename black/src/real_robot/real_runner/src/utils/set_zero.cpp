@@ -17,7 +17,7 @@ void motor_zero::save_calibration_file()
         for (double val : creep_position_) file << val << " ";
         file << "\n";
         file.close();
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "校准参数已保存至: %s", CALIBRATION_FILE.c_str());
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "校准参数已保存至: %s", CALIBRATION_FILE.c_str());
     } 
     else 
     {
@@ -37,7 +37,7 @@ bool motor_zero::load_calibration_file()
             if (!(file >> creep_position_[i])) return false;
         }
         file.close();
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "成功加载校准文件!");
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "成功加载校准文件!");
         return true;
     }
     RCLCPP_WARN(rclcpp::get_logger("motor_zero"), "未找到校准文件，使用默认值(0.0)");
@@ -56,14 +56,14 @@ void motor_zero::get_motor_offset(const std::vector<MotorData> &motor_state,int 
 
         // 计算直接差值
         double diff  = current_val - calibration_val;
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Motor %d Current Pos: %f, Calibration Pos: %f, Diff: %f", i+leg_id*3, current_val, calibration_val, diff);
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Motor %d Current Pos: %f, Calibration Pos: %f, Diff: %f", i+leg_id*3, current_val, calibration_val, diff);
         // [优化] 计算差了多少个整圈(四舍五入)
         int rounds = std::round(diff / (2 * M_PI));
-        RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Motor %d Rounds: %d", i+leg_id*3, rounds);
+        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Motor %d Rounds: %d", i+leg_id*3, rounds);
         // 计算补偿量
         // off_set_ 记录的是：为了对齐到标定相位，需要补偿的值
         off_set_[i+leg_id*3] = -rounds * 2 * M_PI;
-        //RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Motor %d Offset set to: %f", i, off_set_[i]);
+        //RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Motor %d Offset set to: %f", i, off_set_[i]);
     }
 }
 
@@ -92,15 +92,15 @@ void motor_zero::record_position(){
         while(std::cin >> c){
             if(c == 's'){
                 set_straight_position = true;
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Command: Set STRAIGHT position");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Command: Set STRAIGHT position");
             }
             else if(c == 'c'){
                 set_creep_position = true;
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Command: Set CREEP position");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Command: Set CREEP position");
             }
             else if(c == 'w'){
                  save_flag = true;
-                 RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Command: SAVE to file");
+                 RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Command: SAVE to file");
             }
             else if(c == 'm'){
                 // 打印当前内存中的校准值
@@ -111,7 +111,7 @@ void motor_zero::record_position(){
                 std::cout << std::endl;
             }
             else if(c == 'q'){
-                RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Exiting record thread...");
+                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Exiting record thread...");
                 exit_thread = true;
                 break;
             }
@@ -167,14 +167,14 @@ void motor_zero::record_position(){
             for(int i=0; i<motor_num; i++){
                 straight_position_[i] = current_position[i];
             }
-            RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Straight position recorded in RAM.");
+            RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Straight position recorded in RAM.");
             set_straight_position = false;
         }
         else if(set_creep_position){
             for(int i=0; i<motor_num; i++){
                 creep_position_[i] = current_position[i];
             }
-            RCLCPP_INFO(rclcpp::get_logger("motor_zero"), "Creep position recorded in RAM.");
+            RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Creep position recorded in RAM.");
             set_creep_position = false;
         }
         

@@ -225,7 +225,7 @@ private:
                 motor_zero_.get_motor_offset(motorDataGroup_,legIndex);
                 
                 is_offset_initialized_[legIndex] = true;
-                RCLCPP_INFO(rclcpp::get_logger("SerialPack"), "Motor Offsets Initialized!");
+                RCLCPP_DEBUG(rclcpp::get_logger("SerialPack"), "Motor Offsets Initialized!");
 	            } else {
 	                // 如果通信失败，不标记为初始化成功，下一轮循环重试
 	                RCLCPP_WARN(rclcpp::get_logger("SerialPack"), "Failed to read initial motor state, retrying...");

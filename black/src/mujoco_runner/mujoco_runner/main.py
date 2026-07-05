@@ -25,7 +25,7 @@ class MujocoNode(Node):
 
         self.declare_parameter('rname','black').__init__
         rname = self.get_parameter('rname').value
-        self.get_logger().info(f"loading robot is :{rname}")
+        self.get_logger().debug(f"loading robot is :{rname}")
 
         # 电机映射表
         # Index(i): 程序/消息中的逻辑电机ID
@@ -156,7 +156,7 @@ class MujocoNode(Node):
             self.publish_imu_data()
             self.publish_joint_state()
             x, y, z = self.get_base_position()
-            # self.get_logger().info(f"Base Pos: {x:.3f}, {y:.3f}, {z:.3f}")
+            # self.get_logger().debug(f"Base Pos: {x:.3f}, {y:.3f}, {z:.3f}")
 
     def publish_joint_state(self):
         robot_state_msg = RobotState()
