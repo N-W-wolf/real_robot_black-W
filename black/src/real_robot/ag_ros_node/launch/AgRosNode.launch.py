@@ -13,15 +13,13 @@ def generate_launch_description():
             namespace='',
             name="ag_ros_node",
             output="screen",
-            prefix="taskset -c 4,5 chrt -f 90",
-  
             #ag_ros_node 节点运行配置参数
             parameters=[
                 #连接类型：serial port：0 , UDP：1
                 {"ConnectionType": 0},
                 
-				#串口设备串  defaule: /dev/ttyACM0
-                {"UART_Port": "/dev/IMU_Link"},
+				#串口设备串  defaule: /dev/ttyACM0 /dev/IMU_Link
+                {"UART_Port": "/dev/ttyACM0"},
 				#串口波特率  default: 115200
                 {"UART_Baudrate": 460800},
                 #latency_timer :1 ~ 16, default:16 

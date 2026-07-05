@@ -11,8 +11,7 @@
 #include <thread>
 #include <mutex>
 #include <cstring>
-#include <pthread.h>
-#include <sched.h>
+#include <array>
 #include "rclcpp/rclcpp.hpp"
 #include "utils/set_zero.h"
 #include "utils/secure_protect.hpp"
@@ -56,7 +55,11 @@ public:
     }
 
     void sendRecv(LowLevelCmd &cmd, LowLevelState &state){
+        const auto sendrecv_start = std::chrono::steady_clock::now();
+        std::array<double, legNum> cmd_stage_ms{};
+        std::array<double, legNum> state_stage_ms{};
         for(int i=0;i<legNum;i++){
+            const auto cmd_stage_start = std::chrono::steady_clock::now();
             {
                 std::lock_guard<std::mutex> lock_cmd(cmdMutex_[i]);
                 
@@ -122,7 +125,10 @@ public:
                     }
                 }
             }
+            cmd_stage_ms[i] = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - cmd_stage_start).count();
             
+            const auto state_stage_start = std::chrono::steady_clock::now();
             {
                 std::lock_guard<std::mutex> lock_state(stateMutex_[i]);
                 for(int j=0;j<jointNum;j++){
@@ -161,33 +167,28 @@ public:
                     state.motorState.motor_state[j + i*jointNum].cur = 0;
                 }
             }
+            state_stage_ms[i] = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - state_stage_start).count();
+        }
+
+        const double total_ms = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - sendrecv_start).count();
+        static auto last_slow_log = std::chrono::steady_clock::time_point{};
+        const auto now = std::chrono::steady_clock::now();
+        if (total_ms > 20.0 && now - last_slow_log > std::chrono::seconds(1)) {
+            last_slow_log = now;
+            RCLCPP_WARN(
+                rclcpp::get_logger("SerialPack"),
+                "SerialPack::sendRecv slow %.3f ms | cmd=[%.3f %.3f %.3f %.3f] state=[%.3f %.3f %.3f %.3f]",
+                total_ms,
+                cmd_stage_ms[0], cmd_stage_ms[1], cmd_stage_ms[2], cmd_stage_ms[3],
+                state_stage_ms[0], state_stage_ms[1], state_stage_ms[2], state_stage_ms[3]);
         }
     }
     bool not_first_command;
 private:
-    static void setCurrentThreadRealtimePriority(int priority, int legIndex) {
-        sched_param param{};
-        param.sched_priority = priority;
-
-        int ret = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
-        if (ret != 0) {
-            RCLCPP_WARN(
-                rclcpp::get_logger("SerialPack"),
-                "Failed to set leg %d thread priority to SCHED_FIFO %d: %s",
-                legIndex, priority, std::strerror(ret));
-        } else {
-            RCLCPP_INFO(
-                rclcpp::get_logger("SerialPack"),
-                "Leg %d thread priority set to SCHED_FIFO %d",
-                legIndex, priority);
-        }
-    }
-
     void _sendRecvMotorGroup(std::vector<MotorCmd> &motorCmdGroup_, std::vector<MotorData> &motorDataGroup_,
                         int legIndex, SerialPort &port){
-    constexpr int LEG_THREAD_RT_PRIORITY = 65;
-    setCurrentThreadRealtimePriority(LEG_THREAD_RT_PRIORITY, legIndex);
-
     std::vector<MotorCmd> localCmd;
     std::vector<MotorData> localState;
     // 先分配空间防止 sendRecv 失败

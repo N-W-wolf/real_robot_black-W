@@ -8,7 +8,6 @@ def generate_launch_description():
         executable='real_runner',
         name='real_runner',
         output='screen',
-        prefix='taskset -c 2,3 chrt -f 90',
     )
 
     return LaunchDescription([real_runner_node])

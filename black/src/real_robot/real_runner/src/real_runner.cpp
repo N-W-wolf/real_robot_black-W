@@ -68,16 +68,35 @@ private:
     // IMU 回调函数 (执行安全检查)
     void _imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg) {
         auto now = this->now();
+        const int64_t now_ns = now.nanoseconds();
+        const int64_t previous_imu_time_ns =
+            last_imu_time_ns_.exchange(now_ns, std::memory_order_relaxed);
         last_imu_time_ = now; // 喂狗：更新时间戳
-        last_imu_time_ns_.store(now.nanoseconds(), std::memory_order_relaxed);
         const bool first_imu = !has_received_imu_.exchange(true, std::memory_order_relaxed);
         const bool was_alive = imu_alive_.exchange(true, std::memory_order_relaxed);
         imu_timeout_strikes_.store(0, std::memory_order_relaxed);
 
         if (first_imu) {
-            RCLCPP_INFO(this->get_logger(), "收到第一帧 IMU，启用 IMU 超时监控。");
+            RCLCPP_INFO(this->get_logger(), "收到第一帧 IMU，等待数据流稳定后启用超时监控。");
         } else if (!was_alive) {
             RCLCPP_WARN(this->get_logger(), "IMU 数据恢复，已清除超时计数；安全状态保持当前保护逻辑。");
+        }
+
+        if (!first_imu && previous_imu_time_ns > 0) {
+            const double gap =
+                static_cast<double>(now_ns - previous_imu_time_ns) * 1e-9;
+            if (gap > 0.0 && gap <= IMU_STABLE_MAX_GAP_SEC) {
+                const int stable_count =
+                    imu_stable_frame_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+                if (stable_count >= IMU_STABLE_FRAME_REQUIRED &&
+                    !imu_timeout_monitor_enabled_.exchange(true, std::memory_order_relaxed)) {
+                    RCLCPP_INFO(
+                        this->get_logger(),
+                        "IMU 数据流已稳定，启用超时监控。");
+                }
+            } else {
+                imu_stable_frame_count_.store(0, std::memory_order_relaxed);
+            }
         }
 
         // 1. 如果imu状态已经是不安全，则无需再计算
@@ -119,6 +138,10 @@ private:
                 RCLCPP_WARN_THROTTLE(
                     this->get_logger(), *this->get_clock(), 1000,
                     "等待第一帧 IMU，暂不启用超时监控...");
+            } else if (!imu_timeout_monitor_enabled_.load(std::memory_order_relaxed)) {
+                RCLCPP_WARN_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000,
+                    "等待 IMU 数据流稳定，暂不启用超时监控...");
             } else {
                 const int64_t last_imu_time_ns = last_imu_time_ns_.load(std::memory_order_relaxed);
                 const double time_since_last_imu =
@@ -189,7 +212,9 @@ private:
     std::atomic<bool> running_{true};
     std::atomic<bool> imu_alive_{true};
     std::atomic<bool> has_received_imu_{false};
+    std::atomic<bool> imu_timeout_monitor_enabled_{false};
     std::atomic<int> imu_timeout_strikes_{0};
+    std::atomic<int> imu_stable_frame_count_{0};
     std::atomic<int64_t> last_imu_time_ns_{0};
     std::thread exchangeThread_;
 
@@ -211,8 +236,10 @@ private:
     motor_zero motor_zero_;
 
     double dt_ = 0.005;
-    const double IMU_TIMEOUT_SEC = 0.2;
+    const double IMU_TIMEOUT_SEC = 0.5;
     const int IMU_TIMEOUT_CONFIRM_COUNT = 3;
+    const double IMU_STABLE_MAX_GAP_SEC = 0.02;
+    const int IMU_STABLE_FRAME_REQUIRED = 250;
 };
 
 int main(int argc, char **argv) {

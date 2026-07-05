@@ -284,11 +284,19 @@ void AgRosNode::period1msMonitor()
     {
         mPeriod1msCnt = 0;
         mRunTime1s++;
-        //AGLOGI("monitor: mRunTime1s[%lu] mSerialDataSum[%lu] mUDPDataSum[%lu] imuFreq[%lu]\r\n",mRunTime1s,mSerialDataSum,mUDPDataSum,mMonitorImuCnt);
+        RCLCPP_INFO(
+            this->get_logger(),
+            "IMU monitor: runtime=%lu serial_bytes=%lu udp_bytes=%lu imu_frames=%lu",
+            mRunTime1s,
+            mSerialDataSum,
+            mUDPDataSum,
+            mMonitorImuCnt);
         if (mMonitorImuCnt == 0)
         {
             AGLOGW("IMU Data Lost Warning!");
         }
+        mSerialDataSum = 0;
+        mUDPDataSum = 0;
         mMonitorImuCnt = 0;
     }
 }

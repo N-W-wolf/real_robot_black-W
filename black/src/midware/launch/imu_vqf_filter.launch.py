@@ -8,7 +8,6 @@ def generate_launch_description():
         executable='imu_vqf_filter',
         name='imu_vqf_filter',
         output='screen',
-        prefix='taskset -c 6,7 chrt -f 90',
         parameters=[{
             'input_topic': '/_lowState/imu_raw',
             'output_topic': '/_lowState/imu',

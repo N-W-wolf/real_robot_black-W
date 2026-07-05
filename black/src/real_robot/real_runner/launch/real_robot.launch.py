@@ -2,7 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
@@ -63,8 +63,7 @@ def generate_launch_description():
     return LaunchDescription([
         rname_arg,
         ag_launch_include,
-        imu_launch_include,
-        real_runner_launch_include,
-        middleware_node,
-        param_node,
+        TimerAction(period=2.0, actions=[real_runner_launch_include]),
+        TimerAction(period=4.0, actions=[imu_launch_include]),
+        TimerAction(period=5.0, actions=[middleware_node, param_node]),
     ])
