@@ -1,0 +1,58 @@
+# ROS 2 / colcon build artifacts
+build/
+install/
+log/
+*/build/
+*/install/
+*/log/
+
+# Python cache and packaging artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# C/C++ build artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+*.o
+*.a
+*.so
+!black*/src/**/*.so
+*.dylib
+*.dll
+*.exe
+
+# Runtime logs and dumps
+*.log
+*.jsonl
+*.bag
+*.db3
+*.mcap
+core
+core.*
+
+# Local environment and machine-specific config
+.env
+.env.*
+!.env.example
+*.local
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
