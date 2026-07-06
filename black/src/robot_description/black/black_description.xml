@@ -17,6 +17,7 @@
 
   <asset>
     <mesh name="trunk" file="trunk.STL"/>
+    <mesh name="d435" file="d435.stl"/>
     <mesh name="FL_hip" file="FL_hip.STL"/>
     <mesh name="FL_thigh" file="FL_thigh.STL"/>
     <mesh name="FL_calf" file="FL_calf.STL"/>
@@ -31,6 +32,11 @@
     <mesh name="RL_calf" file="RL_calf.STL"/>
   </asset>
 
+  <contact>
+    <exclude body1="trunk" body2="FR_thigh"/>
+    <exclude body1="trunk" body2="FL_thigh"/>
+  </contact>
+
   <worldbody>
     <geom size="0.0005 0.0005 0.0005" type="box" contype="0" conaffinity="0" group="1" density="0"/>
     <body name="trunk" pos= "0 0 0.5" childclass="black">
@@ -42,6 +48,11 @@
       <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="trunk"/>
       <geom size="0.0005 0.0005 0.0005" type="box" contype="0" conaffinity="0" group="1" density="0" rgba="0.8 0 0 1"/>
       <site name="imu" pos="0 0 0" quat="1 0 0 0"/>
+      <body name="d435_link" pos="0.225 0 0.028">
+        <inertial pos="0 0 -0.0125" mass="0.072" diaginertia="0.00002 0.00006 0.00006"/>
+        <geom type="mesh" pos="0.07 0 -0.08" contype="0" conaffinity="0" group="1" density="0" rgba="0.15 0.15 0.15 1" mesh="d435" euler="0 2.1165682 1.5707963"/>
+        <geom type="mesh" pos="0.07 0 -0.08" rgba="0.15 0.15 0.15 1" mesh="d435" euler="0 2.1165682 1.5707963"/>
+      </body>
       <body name="FR_hip" pos="0.1566 -0.059999 -0.06425">
         <inertial pos="0.05138 -0.014784 -5.6642e-05" quat="0.718222 0.0109487 0.0108345 0.695644" mass="0.60559" diaginertia="0.000649601 0.00037398 0.000341509"/>
         <joint name="FR_hip_joint" pos="0 0 0" axis="1 0 0" range="-10 10" actuatorfrcrange="-20 20"/>
@@ -51,7 +62,7 @@
           <inertial pos="0.039669 -0.0023188 -0.015479" quat="0.999775 -0.0212092 7.07592e-05 -9.25343e-05" mass="0.84232" diaginertia="0.0016834 0.00123603 0.000494576"/>
           <joint name="FR_thigh_joint" pos="0 0 0" axis="1 0 0" range="-10 10" actuatorfrcrange="-20 20"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.75294 0.75294 0.75294 1" mesh="FR_thigh"/>
-          <!-- <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="FR_thigh"/> -->
+          <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="FR_thigh"/>
           <body name="FR_calf" pos="0.0618 0 -0.25">
             <inertial pos="-6.80423e-05 0.0133885 -0.181221" quat="0.999779 0.0209922 -0.000251219 0.00128186" mass="0.35559" diaginertia="0.00175419 0.00171576 7.03881e-05"/>
             <joint name="FR_calf_joint" pos="0 0 0" axis="1 0 0" range="-10 10" actuatorfrcrange="-20 20"/>
@@ -71,7 +82,7 @@
           <inertial pos="0.039584 0.0023922 -0.015369" quat="0.999743 0.022652 8.07203e-05 -6.27535e-05" mass="0.83909" diaginertia="0.0016834 0.00123532 0.000495162"/>
           <joint name="FL_thigh_joint" pos="0 0 0" axis="1 0 0" range="-10 10" actuatorfrcrange="-20 20"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.75294 0.75294 0.75294 1" mesh="FL_thigh"/>
-          <!-- <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="FL_thigh"/> -->
+          <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="FL_thigh"/>
           <body name="FL_calf" pos="0.0618 0 -0.25">
             <inertial pos="6.80423e-05 -0.0133885 -0.181221" quat="0.999779 -0.0209922 0.000251214 0.00128192" mass="0.35559" diaginertia="0.00175419 0.00171576 7.03881e-05"/>
             <joint name="FL_calf_joint" pos="0 0 0" axis="1 0 0" range="-10 10" actuatorfrcrange="-20 20"/>

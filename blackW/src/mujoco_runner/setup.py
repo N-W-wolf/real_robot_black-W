@@ -29,6 +29,8 @@ setup(
     entry_points={
         'console_scripts': [
             "mm = mujoco_runner.main:main",
+            "mm_black_arm = mujoco_runner.main_black_arm:main",
+            "arm_terminal_control = mujoco_runner.arm_terminal_control:main",
             "controller = mujoco_runner.controller_demo:main"
         ],
     },

@@ -15,6 +15,8 @@ if($ENV{ROS_DISTRO} MATCHES "noetic")
     RobotCommand.msg
     RobotState.msg
     IMU.msg
+    Gap.msg
+    GapModel.msg
   )
   generate_messages(
     DEPENDENCIES
@@ -37,12 +39,18 @@ if($ENV{ROS_DISTRO} MATCHES "noetic")
 elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
   find_package(ament_cmake REQUIRED)
   find_package(rosidl_default_generators REQUIRED)
+  find_package(std_msgs REQUIRED)
   rosidl_generate_interfaces(${PROJECT_NAME}
     "msg/MotorCommand.msg"
     "msg/MotorState.msg"
     "msg/RobotCommand.msg"
     "msg/RobotState.msg"
     "msg/IMU.msg"
+    "msg/Gap.msg"
+    "msg/GapModel.msg"
+    DEPENDENCIES
+    std_msgs
   )
+  ament_export_dependencies(rosidl_default_runtime)
   ament_package()
 endif()

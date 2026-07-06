@@ -71,11 +71,11 @@ class Controller(Node):
         # 500Hz 控制频率
         self.timer = self.create_timer(0.002, self.timer_callback)
 
-        self.get_logger().debug("=====================================")
-        self.get_logger().debug(" 机器人控制器已启动")
-        self.get_logger().debug(" 按 'g' 进入软启动，按 's' 返回被动模式")
-        self.get_logger().debug(" 按 Ctrl+C 退出")
-        self.get_logger().debug("=====================================")
+        self.get_logger().info("=====================================")
+        self.get_logger().info(" 机器人控制器已启动")
+        self.get_logger().info(" 按 'g' 进入软启动，按 's' 返回被动模式")
+        self.get_logger().info(" 按 Ctrl+C 退出")
+        self.get_logger().info("=====================================")
 
     # ---------------------- 状态回调 ----------------------
     def state_callback(self, msg):
@@ -86,14 +86,15 @@ class Controller(Node):
         # 第一次收到状态 → 初始化 motor 数量
         if not self.got_first_state:
             self.motor_count = len(msg.motor_state)
-            self.get_logger().debug(f"检测到 {self.motor_count} 个电机，初始化控制器。")
+            self.get_logger().info(f"检测到 {self.motor_count} 个电机，初始化控制器。")
 
             # 初始化数组
             self.current_q = [0.0] * self.motor_count
             self.start_q = [0.0] * self.motor_count
             
+            # 格式化打印
             target_str = " ".join([f"{self.target_q[i]:.2f}" for i in range(self.motor_count)])
-            self.get_logger().debug(f'target_q: {target_str}')
+            print(f'target_q: {target_str}')
 
             self.got_first_state = True
 
@@ -122,6 +123,7 @@ class Controller(Node):
             if self.control_state == "PASSIVE":
                 cmd_q = self.current_q[:]
                 cmd_kp = 0.0
+                print(''.join(f"{i}:{self.current_q[i]:.2f} " for i in range(self.motor_count)), end='\r')
 
             elif self.control_state == "MOVE":
                 dt = t - self.start_time
@@ -136,7 +138,7 @@ class Controller(Node):
                     self.control_state = "HOLD"
                     cmd_q = self.target_q[:]
                     cmd_kp = 40.0
-                    self.get_logger().debug("运动完成，进入 HOLD 模式。")
+                    self.get_logger().info("运动完成，进入 HOLD 模式。")
 
             elif self.control_state == "HOLD":
                 cmd_q = self.target_q[:]
@@ -167,13 +169,13 @@ class Controller(Node):
             self.start_time = self.get_clock().now().nanoseconds / 1e9
             self.control_state = "MOVE"
 
-        self.get_logger().debug("开始软启动插值动作")
+        self.get_logger().info("开始软启动插值动作")
 
     def return_to_listen(self):
         # 加锁
         with self.lock:
             self.control_state = "PASSIVE"
-        self.get_logger().debug("切换回 PASSIVE（阻尼模式）")
+        self.get_logger().info("切换回 PASSIVE（阻尼模式）")
 
 
 # --------------------- 键盘线程 ---------------------
@@ -187,10 +189,10 @@ def keyboard_listener(node):
             elif key == 's':
                 node.return_to_listen()
             elif key == '\x03': # ASCII 3 是 Ctrl+C
-                node.get_logger().debug("检测到 Ctrl+C，准备退出...")
+                node.get_logger().info("检测到 Ctrl+C，准备退出...")
                 break
     except Exception as e:
-        node.get_logger().error(f"keyboard listener failed: {e}")
+        print(e)
 
 # --------------------- 主入口 ---------------------
 def main(args=None):
