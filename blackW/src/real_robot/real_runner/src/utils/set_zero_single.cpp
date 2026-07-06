@@ -18,7 +18,7 @@ void motor_zero::save_calibration_file()
         file << "\n";
         
         file.close();
-        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "校准参数已保存至: %s", CALIBRATION_FILE.c_str());
+        std::cout << "校准参数已保存至: " << CALIBRATION_FILE << std::endl;
     } 
     else 
     {
@@ -110,24 +110,25 @@ void motor_zero::record_position(){
         while(std::cin>>c){
             if(c=='s'){
                 set_straight_position = true;
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "set straight position");
+                std::cout << "set straight position" << std::endl;
             }
             else if(c=='c'){
                 set_creep_position = true;
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "set creep position");
+                std::cout << "set creep position" << std::endl;
             }
             else if(c=='m'){
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "straight position:");
+                std::cout << "straight position: ";
                 for(int i=0;i<motor_num;i++){
-                    RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "%f ", straight_position_[i]);
+                    std::cout << straight_position_[i] << " ";
                 }
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "creep position:");
+                std::cout << "\ncreep position: ";
                 for(int i=0;i<motor_num;i++){
-                    RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "%f ", creep_position_[i]);
+                    std::cout << creep_position_[i] << " ";
                 }
+                std::cout << std::endl;
             }
             else if(c=='q'){
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "exit record thread");
+                std::cout << "exit record thread" << std::endl;
                 exit_thread = true;
                 break;
             }
@@ -156,12 +157,14 @@ void motor_zero::record_position(){
             for(int i(0);i<motor_num;i++){
                 straight_position_[i] = current_position[i];
             }
+            std::cout << "straight position recorded in RAM." << std::endl;
             set_straight_position = false;
         }
         else if(set_creep_position){
             for(int i(0);i<motor_num;i++){
                 creep_position_[i] = current_position[i];
             }
+            std::cout << "creep position recorded in RAM." << std::endl;
             set_creep_position = false;
         }
     }

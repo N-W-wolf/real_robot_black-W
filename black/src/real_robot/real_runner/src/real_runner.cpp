@@ -12,6 +12,7 @@
 #include <mutex>
 #include <cmath>
 #include <cstdint>
+#include <iostream>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -250,12 +251,15 @@ int main(int argc, char **argv) {
     rclcpp::spin(node);
 #else
     auto node = std::make_shared<rclcpp::Node>("motor_calibration_node");
-    RCLCPP_DEBUG(node->get_logger(), "Starting Motor Calibration...");
-    RCLCPP_DEBUG(node->get_logger(), "Instructions:");
-    RCLCPP_DEBUG(node->get_logger(), "  Type 's' + Enter: Record STRAIGHT position (站立/伸直姿态)");
-    RCLCPP_DEBUG(node->get_logger(), "  Type 'c' + Enter: Record CREEP position (趴下/蹲伏姿态)");
-    RCLCPP_DEBUG(node->get_logger(), "  Type 'm' + Enter: Show recorded positions (打印当前记录)");
-    RCLCPP_DEBUG(node->get_logger(), "  Type 'q' + Enter: Quit");
+    std::cout
+        << "Starting Motor Calibration...\n"
+        << "Instructions:\n"
+        << "  s + Enter: Record STRAIGHT position (站立/伸直姿态)\n"
+        << "  c + Enter: Record CREEP position (趴下/蹲伏姿态)\n"
+        << "  w + Enter: Save calibration file\n"
+        << "  m + Enter: Show recorded positions (打印当前记录)\n"
+        << "  q + Enter: Quit\n"
+        << std::flush;
 
     motor_zero calibrator;
     calibrator.record_position();

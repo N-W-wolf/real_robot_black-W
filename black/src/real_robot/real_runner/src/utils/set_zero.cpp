@@ -17,7 +17,7 @@ void motor_zero::save_calibration_file()
         for (double val : creep_position_) file << val << " ";
         file << "\n";
         file.close();
-        RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "校准参数已保存至: %s", CALIBRATION_FILE.c_str());
+        std::cout << "校准参数已保存至: " << CALIBRATION_FILE << std::endl;
     } 
     else 
     {
@@ -92,15 +92,15 @@ void motor_zero::record_position(){
         while(std::cin >> c){
             if(c == 's'){
                 set_straight_position = true;
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Command: Set STRAIGHT position");
+                std::cout << "Command: Set STRAIGHT position" << std::endl;
             }
             else if(c == 'c'){
                 set_creep_position = true;
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Command: Set CREEP position");
+                std::cout << "Command: Set CREEP position" << std::endl;
             }
             else if(c == 'w'){
                  save_flag = true;
-                 RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Command: SAVE to file");
+                 std::cout << "Command: SAVE to file" << std::endl;
             }
             else if(c == 'm'){
                 // 打印当前内存中的校准值
@@ -111,7 +111,7 @@ void motor_zero::record_position(){
                 std::cout << std::endl;
             }
             else if(c == 'q'){
-                RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Exiting record thread...");
+                std::cout << "Exiting record thread..." << std::endl;
                 exit_thread = true;
                 break;
             }
@@ -167,14 +167,14 @@ void motor_zero::record_position(){
             for(int i=0; i<motor_num; i++){
                 straight_position_[i] = current_position[i];
             }
-            RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Straight position recorded in RAM.");
+            std::cout << "Straight position recorded in RAM." << std::endl;
             set_straight_position = false;
         }
         else if(set_creep_position){
             for(int i=0; i<motor_num; i++){
                 creep_position_[i] = current_position[i];
             }
-            RCLCPP_DEBUG(rclcpp::get_logger("motor_zero"), "Creep position recorded in RAM.");
+            std::cout << "Creep position recorded in RAM." << std::endl;
             set_creep_position = false;
         }
         
