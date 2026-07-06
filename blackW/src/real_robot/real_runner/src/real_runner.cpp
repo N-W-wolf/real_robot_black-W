@@ -12,11 +12,23 @@
 #include <mutex>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
+#include <cerrno>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <array>
+#include <algorithm>
+#include <chrono>
+
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
+#include "imu/vqf.hpp"
 #include "utils/set_zero.h"
 #include "utils/secure_protect.hpp"
 #include "utils/serial_packages.hpp"
@@ -28,46 +40,107 @@ const int motorNum = rosMotorNum;
 const double ROLL_THRESHOLD = M_PI / 3.0;
 const double PITCH_THRESHOLD = M_PI / 3.0;
 
+namespace {
+constexpr size_t AB5465_FRAME_LEN = 66;
+constexpr uint8_t AB5465_HEADER[4] = {0xAB, 0x54, 0x65, 0x00};
+
+struct Ab5465ImuSample {
+    float roll = 0.0f;
+    float pitch = 0.0f;
+    float yaw = 0.0f;
+    float gyro_x = 0.0f;
+    float gyro_y = 0.0f;
+    float gyro_z = 0.0f;
+    float accel_x = 0.0f;
+    float accel_y = 0.0f;
+    float accel_z = 0.0f;
+};
+
+uint16_t readLeU16(const std::vector<uint8_t>& data, size_t offset) {
+    return static_cast<uint16_t>(data[offset]) |
+        (static_cast<uint16_t>(data[offset + 1]) << 8);
+}
+
+uint32_t readLeU32(const std::vector<uint8_t>& data, size_t offset) {
+    return static_cast<uint32_t>(data[offset]) |
+        (static_cast<uint32_t>(data[offset + 1]) << 8) |
+        (static_cast<uint32_t>(data[offset + 2]) << 16) |
+        (static_cast<uint32_t>(data[offset + 3]) << 24);
+}
+
+float readLeFloat(const std::vector<uint8_t>& data, size_t offset) {
+    const uint32_t raw = readLeU32(data, offset);
+    float value = 0.0f;
+    std::memcpy(&value, &raw, sizeof(value));
+    return value;
+}
+
+uint16_t crc16CcittFalse(const uint8_t* data, size_t len) {
+    uint16_t crc = 0xFFFFu;
+    for (size_t i = 0; i < len; ++i) {
+        crc ^= static_cast<uint16_t>(data[i]) << 8;
+        for (int bit = 0; bit < 8; ++bit) {
+            crc = (crc & 0x8000u) ? static_cast<uint16_t>((crc << 1) ^ 0x1021u)
+                                  : static_cast<uint16_t>(crc << 1);
+        }
+    }
+    return crc;
+}
+
+speed_t baudToTermios(int baudrate) {
+    switch (baudrate) {
+        case 115200: return B115200;
+        case 230400: return B230400;
+        case 460800: return B460800;
+        case 921600: return B921600;
+        default: return B460800;
+    }
+}
+
+bool hasAb5465Header(const std::vector<uint8_t>& data) {
+    return data.size() >= 4 &&
+        std::equal(std::begin(AB5465_HEADER), std::end(AB5465_HEADER), data.begin());
+}
+} // namespace
+
 class RealRunner : public rclcpp::Node {
 public:
     RealRunner() : Node("realRunner"), SerialPack_("/dev/leg_0", "/dev/leg_1", "/dev/leg_2", "/dev/leg_3"),_lowState(motorNum),_lowCmd(motorNum) {
+        imu_port_ = this->declare_parameter<std::string>("imu_port", "/dev/IMU_Link");
+        imu_baudrate_ = this->declare_parameter<int>("imu_baudrate", 460800);
+        imu_vqf_enabled_ = this->declare_parameter<bool>("imu_vqf_enabled", true);
+        imu_vqf_tau_acc_ = this->declare_parameter<double>("imu_vqf_tau_acc", 3.0);
+        imu_vqf_dt_ = this->declare_parameter<double>("imu_vqf_dt", 0.002);
+        if (imu_vqf_dt_ <= 0.0) {
+            imu_vqf_dt_ = 0.002;
+        }
+        if (imu_vqf_tau_acc_ <= 0.0) {
+            imu_vqf_tau_acc_ = 3.0;
+        }
+        VQFParams vqf_params;
+        vqf_params.tauAcc = imu_vqf_tau_acc_;
+        imu_vqf_ = std::make_unique<VQF>(vqf_params, imu_vqf_dt_, imu_vqf_dt_);
+
         last_imu_time_ = this->now();
         last_imu_time_ns_.store(last_imu_time_.nanoseconds(), std::memory_order_relaxed);
-        // --- IMU 订阅与安全监控 ---
-        auto qos = rclcpp::SensorDataQoS();
-        rclcpp::SubscriptionOptions options;
-
-        // 设置 QoS 事件回调：监控 IMU 是否存活
-        options.event_callbacks.liveliness_callback =
-            [this](rclcpp::QOSLivelinessChangedInfo & info) {
-                if (info.alive_count == 0) {
-                    RCLCPP_ERROR(this->get_logger(), "IMU 节点已掉线或未启动！");
-                    imu_alive_ = false;
-                } else {
-                    RCLCPP_DEBUG(this->get_logger(), "IMU 节点已上线");
-                    imu_alive_ = true;
-                }
-            };
-
-        // 订阅 IMU 数据 (这里合并了之前的 imuAliveSub 和安全检测逻辑)
-        imuSub_ = this->create_subscription<sensor_msgs::msg::Imu>("/_lowState/imu", qos,
-            std::bind(&RealRunner::_imuCallback, this, _1),
-            options);
+        imuPub_ = this->create_publisher<sensor_msgs::msg::Imu>("/_lowState/imu", rclcpp::SensorDataQoS());
 
         jointStatePub_ = this->create_publisher<robot_msgs::msg::RobotState>("/_lowState/joint", 10);
         commandSub_ = this->create_subscription<robot_msgs::msg::RobotCommand>(
             "/_lowCmd/command", 10,
             std::bind(&RealRunner::_commandCallback, this, _1));
+        imuThread_ = std::thread([this]() { this->_imuLoop(); });
         exchangeThread_ = std::thread([this]() { this->_exchangeLoop(); });
 
     }
     ~RealRunner() {
         running_ = false;
+        _closeImuSerial();
+        if (imuThread_.joinable()) imuThread_.join();
         if (exchangeThread_.joinable()) exchangeThread_.join();
     }
 private:
-    // IMU 回调函数 (执行安全检查)
-    void _imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg) {
+    void _processImuSafety(const sensor_msgs::msg::Imu& msg) {
         auto now = this->now();
         const int64_t now_ns = now.nanoseconds();
         const int64_t previous_imu_time_ns =
@@ -106,7 +179,7 @@ private:
         
         // 2. 姿态解算 (四元数 -> 欧拉角)
         tf2::Quaternion q(
-            msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w
+            msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w
         );
         tf2::Matrix3x3 m(q);
         double roll, pitch, yaw;
@@ -124,6 +197,181 @@ private:
         // 4. 更新单例状态
         // SerialPack 线程会读取这个单例状态
         utils::SafetyStateManager::getInstance().setIsSafe(currently_safe);
+    }
+
+    bool _openImuSerial() {
+        _closeImuSerial();
+        imu_fd_ = ::open(imu_port_.c_str(), O_RDONLY | O_NOCTTY | O_NONBLOCK);
+        if (imu_fd_ < 0) {
+            RCLCPP_WARN_THROTTLE(
+                this->get_logger(), *this->get_clock(), 2000,
+                "打开 IMU 串口失败: %s (%s)", imu_port_.c_str(), std::strerror(errno));
+            return false;
+        }
+
+        termios tty{};
+        if (tcgetattr(imu_fd_, &tty) != 0) {
+            RCLCPP_ERROR(this->get_logger(), "读取 IMU 串口属性失败: %s", std::strerror(errno));
+            _closeImuSerial();
+            return false;
+        }
+
+        cfmakeraw(&tty);
+        const speed_t speed = baudToTermios(imu_baudrate_);
+        cfsetispeed(&tty, speed);
+        cfsetospeed(&tty, speed);
+        tty.c_cflag |= CLOCAL | CREAD;
+        tty.c_cflag &= ~CSIZE;
+        tty.c_cflag |= CS8;
+        tty.c_cflag &= ~PARENB;
+        tty.c_cflag &= ~CSTOPB;
+#ifdef CRTSCTS
+        tty.c_cflag |= CRTSCTS;
+#endif
+        tty.c_cc[VMIN] = 0;
+        tty.c_cc[VTIME] = 1;
+
+        if (tcsetattr(imu_fd_, TCSANOW, &tty) != 0) {
+            RCLCPP_ERROR(this->get_logger(), "配置 IMU 串口失败: %s", std::strerror(errno));
+            _closeImuSerial();
+            return false;
+        }
+        tcflush(imu_fd_, TCIFLUSH);
+        RCLCPP_INFO(this->get_logger(), "IMU 串口已打开: %s @ %d", imu_port_.c_str(), imu_baudrate_);
+        return true;
+    }
+
+    void _closeImuSerial() {
+        if (imu_fd_ >= 0) {
+            ::close(imu_fd_);
+            imu_fd_ = -1;
+        }
+    }
+
+    void _imuLoop() {
+        std::array<uint8_t, 512> read_buffer{};
+        while (rclcpp::ok() && running_.load(std::memory_order_relaxed)) {
+            if (imu_fd_ < 0 && !_openImuSerial()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                continue;
+            }
+
+            const ssize_t n = ::read(imu_fd_, read_buffer.data(), read_buffer.size());
+            if (n > 0) {
+                _processImuBytes(read_buffer.data(), static_cast<size_t>(n));
+                continue;
+            }
+            if (n == 0 || errno == EAGAIN || errno == EWOULDBLOCK) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
+
+            RCLCPP_ERROR(this->get_logger(), "读取 IMU 串口失败: %s", std::strerror(errno));
+            _closeImuSerial();
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+    }
+
+    void _processImuBytes(const uint8_t* data, size_t size) {
+        imu_rx_buffer_.insert(imu_rx_buffer_.end(), data, data + size);
+        if (imu_rx_buffer_.size() > 4096) {
+            imu_rx_buffer_.erase(imu_rx_buffer_.begin(), imu_rx_buffer_.end() - 512);
+        }
+
+        while (imu_rx_buffer_.size() >= 4) {
+            if (!hasAb5465Header(imu_rx_buffer_)) {
+                imu_rx_buffer_.erase(imu_rx_buffer_.begin());
+                continue;
+            }
+            if (imu_rx_buffer_.size() < AB5465_FRAME_LEN) {
+                return;
+            }
+
+            const uint16_t frame_crc = readLeU16(imu_rx_buffer_, AB5465_FRAME_LEN - 2);
+            const uint16_t calc_crc = crc16CcittFalse(imu_rx_buffer_.data(), AB5465_FRAME_LEN - 2);
+            if (frame_crc != calc_crc) {
+                imu_crc_error_count_++;
+                imu_rx_buffer_.erase(imu_rx_buffer_.begin());
+                continue;
+            }
+
+            Ab5465ImuSample sample;
+            sample.roll = readLeFloat(imu_rx_buffer_, 11);
+            sample.pitch = readLeFloat(imu_rx_buffer_, 15);
+            sample.yaw = readLeFloat(imu_rx_buffer_, 19);
+            sample.gyro_x = readLeFloat(imu_rx_buffer_, 23);
+            sample.gyro_y = readLeFloat(imu_rx_buffer_, 27);
+            sample.gyro_z = readLeFloat(imu_rx_buffer_, 31);
+            sample.accel_x = readLeFloat(imu_rx_buffer_, 35);
+            sample.accel_y = readLeFloat(imu_rx_buffer_, 39);
+            sample.accel_z = readLeFloat(imu_rx_buffer_, 43);
+            imu_rx_buffer_.erase(imu_rx_buffer_.begin(), imu_rx_buffer_.begin() + AB5465_FRAME_LEN);
+            _handleImuSample(sample);
+        }
+    }
+
+    void _handleImuSample(const Ab5465ImuSample& sample) {
+        sensor_msgs::msg::Imu msg;
+        msg.header.frame_id = "imu_link";
+        msg.header.stamp = this->now();
+
+        tf2::Quaternion raw_quat;
+        raw_quat.setRPY(
+            sample.roll * M_PI / 180.0,
+            -sample.pitch * M_PI / 180.0,
+            -sample.yaw * M_PI / 180.0);
+        msg.orientation.x = raw_quat.x();
+        msg.orientation.y = raw_quat.y();
+        msg.orientation.z = raw_quat.z();
+        msg.orientation.w = raw_quat.w();
+
+        const double deg2rad = M_PI / 180.0;
+        msg.angular_velocity.x = sample.gyro_x * deg2rad;
+        msg.angular_velocity.y = -sample.gyro_y * deg2rad;
+        msg.angular_velocity.z = -sample.gyro_z * deg2rad;
+        msg.linear_acceleration.x = sample.accel_x;
+        msg.linear_acceleration.y = -sample.accel_y;
+        msg.linear_acceleration.z = -sample.accel_z;
+
+        if (imu_vqf_enabled_) {
+            const auto& gyr = msg.angular_velocity;
+            const auto& acc = msg.linear_acceleration;
+            const double acc_norm = std::sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+            if (std::isfinite(gyr.x) && std::isfinite(gyr.y) && std::isfinite(gyr.z) &&
+                std::isfinite(acc.x) && std::isfinite(acc.y) && std::isfinite(acc.z) &&
+                acc_norm > 1e-6) {
+                const vqf_real_t vqf_gyr[3] = {gyr.x, gyr.y, gyr.z};
+                const vqf_real_t vqf_acc[3] = {acc.x, acc.y, acc.z};
+                imu_vqf_->update(vqf_gyr, vqf_acc);
+                vqf_real_t quat[4];
+                imu_vqf_->getQuat6D(quat);
+                msg.orientation.w = quat[0];
+                msg.orientation.x = quat[1];
+                msg.orientation.y = quat[2];
+                msg.orientation.z = quat[3];
+            }
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(imu_state_mutex_);
+            latest_robot_imu_.quaternion = {
+                static_cast<float>(msg.orientation.w),
+                static_cast<float>(msg.orientation.x),
+                static_cast<float>(msg.orientation.y),
+                static_cast<float>(msg.orientation.z)};
+            latest_robot_imu_.gyroscope = {
+                static_cast<float>(msg.angular_velocity.x),
+                static_cast<float>(msg.angular_velocity.y),
+                static_cast<float>(msg.angular_velocity.z)};
+            latest_robot_imu_.accelerometer = {
+                static_cast<float>(msg.linear_acceleration.x),
+                static_cast<float>(msg.linear_acceleration.y),
+                static_cast<float>(msg.linear_acceleration.z)};
+        }
+
+        imu_frame_count_++;
+        imuPub_->publish(msg);
+        _processImuSafety(msg);
     }
 
     void _exchangeLoop() {
@@ -207,7 +455,10 @@ private:
         SerialPack_.not_first_command = true;
     }
     void _statePublish() {
-        _lowState.imu.header.stamp = this->now();
+        {
+            std::lock_guard<std::mutex> lock(imu_state_mutex_);
+            _lowState.motorState.imu = latest_robot_imu_;
+        }
         jointStatePub_->publish(_lowState.motorState);
     }
 
@@ -229,13 +480,25 @@ private:
     std::atomic<int> imu_stable_frame_count_{0};
     std::atomic<int64_t> last_imu_time_ns_{0};
     std::thread exchangeThread_;
+    std::thread imuThread_;
+    int imu_fd_ = -1;
+    std::string imu_port_;
+    int imu_baudrate_ = 460800;
+    bool imu_vqf_enabled_ = true;
+    double imu_vqf_tau_acc_ = 3.0;
+    double imu_vqf_dt_ = 0.002;
+    std::unique_ptr<VQF> imu_vqf_;
+    std::vector<uint8_t> imu_rx_buffer_;
+    std::atomic<uint64_t> imu_frame_count_{0};
+    std::atomic<uint64_t> imu_crc_error_count_{0};
+    std::mutex imu_state_mutex_;
+    robot_msgs::msg::IMU latest_robot_imu_;
 
     rclcpp::Publisher<robot_msgs::msg::RobotState>::SharedPtr jointStatePub_;
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imuPub_;
 
 
     rclcpp::Subscription<robot_msgs::msg::RobotCommand>::SharedPtr commandSub_;
-    // 修改为通用的 subscription，不再只作为 alive 检查
-    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imuSub_;
     rclcpp::Time last_imu_time_;
 
     // 阻尼模式参数（关节侧值，将在 _sendRecv 中转换为转子侧）

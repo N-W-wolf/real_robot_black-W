@@ -57,7 +57,7 @@ ament_target_dependencies(real_runner_utils_lib
 add_executable(real_runner
   src/real_runner.cpp
   src/utils/set_zero.cpp
-  ../../midware/src/vqf.cpp
+  src/imu/vqf.cpp
 )
 
 # 链接库
@@ -71,7 +71,6 @@ target_link_libraries(real_runner
 # 包含路径
 target_include_directories(real_runner PUBLIC
     include/real_runner
-    ../../midware/include
 )
 
 # 添加所有 ROS 依赖

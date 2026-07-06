@@ -28,7 +28,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
-#include "midware/vqf.hpp"
+#include "imu/vqf.hpp"
 #include "utils/set_zero.h"
 #include "utils/secure_protect.hpp"
 #include "utils/serial_packages.hpp"
