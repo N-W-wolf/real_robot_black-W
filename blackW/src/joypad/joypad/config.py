@@ -1,4 +1,5 @@
-JOYPAD_DT=0.01
+JOYPAD_DT = 0.01
+AXIS_DEADBAND = 0.08
 
 class GamepadMapping:
     def __init__(self):

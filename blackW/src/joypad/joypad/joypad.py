@@ -35,6 +35,9 @@ class JoyPublisher(Node):
         self.axes = [0.0] * self.num_axes_output
         self.buttons = [0] * self.num_buttons_output
 
+    def _apply_deadband(self, value):
+        return 0.0 if abs(value) < config.AXIS_DEADBAND else value
+
     def _select_mapping(self, joystick_name):
         if "XBOX" in joystick_name.upper():
             return config.StandardXbox()
@@ -148,11 +151,13 @@ class JoyPublisher(Node):
             dpad_x_idx = dpad_config.get('x', 6)
             dpad_y_idx = dpad_config.get('y', 7)
 
+            new_axes = [0.0] * self.num_axes_output
             for i in range(num_physical_axes):
                 mapped = self.map.map_axis(i)
-                if 0 <= mapped < len(self.axes) and mapped not in (dpad_x_idx, dpad_y_idx):
+                if 0 <= mapped < len(new_axes) and mapped not in (dpad_x_idx, dpad_y_idx):
                     scale = getattr(self.map, 'axis_scales', {}).get(i, 1.0)
-                    self.axes[mapped] = float(self.joystick.get_axis(i)) * scale
+                    new_axes[mapped] = self._apply_deadband(float(self.joystick.get_axis(i)) * scale)
+            self.axes = new_axes
 
             new_buttons = [0] * self.num_buttons_output
             for i in range(self.joystick.get_numbuttons()):
@@ -161,10 +166,6 @@ class JoyPublisher(Node):
                     new_buttons[mapped] = max(new_buttons[mapped], int(self.joystick.get_button(i)))
             self.buttons = new_buttons
 
-            if 0 <= dpad_x_idx < len(self.axes):
-                self.axes[dpad_x_idx] = 0.0
-            if 0 <= dpad_y_idx < len(self.axes):
-                self.axes[dpad_y_idx] = 0.0
             if self.joystick.get_numhats() > 0:
                 x, y = self.joystick.get_hat(0)
                 if 0 <= dpad_x_idx < len(self.axes):
