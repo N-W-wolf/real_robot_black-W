@@ -5,7 +5,7 @@ DEFAULT_RENDER_RATE_HZ = 60.0
 RENDER_DT = 1.0 / DEFAULT_RENDER_RATE_HZ
 
 # Scene selection
-SCENE_FLAT = 'scene_flat.xml'
+SCENE_FLAT = 'scene.xml'
 SCENE_OBSTACLE = 'scene.xml'
 SCENE_TERRAIN = 'scene_terrain.xml'
 SCENE_ROBOCON = 'scene_robocon.xml'
