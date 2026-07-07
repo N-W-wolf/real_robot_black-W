@@ -88,6 +88,16 @@ class GaiShiXiaoJi(GamepadMapping):
             4: 5
         }
 
+class BeiTongBtpKp20d(GaiShiXiaoJi):
+    def __init__(self):
+        super().__init__()
+        self.axis_scales = {
+            0: -1.0,
+            1: -1.0,
+            2: -1.0,
+            3: -1.0,
+        }
+
 class ShaMoHu(GamepadMapping):
     def __init__(self):
         super().__init__()

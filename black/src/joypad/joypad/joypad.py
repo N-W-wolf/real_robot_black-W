@@ -39,7 +39,10 @@ class JoyPublisher(Node):
         return 0.0 if abs(value) < config.AXIS_DEADBAND else value
 
     def _select_mapping(self, joystick_name):
-        if "XBOX" in joystick_name.upper():
+        joystick_name_upper = joystick_name.upper()
+        if "BEITONG" in joystick_name_upper or "BTP-KP20D" in joystick_name_upper:
+            return config.BeiTongBtpKp20d()
+        if "XBOX" in joystick_name_upper:
             return config.StandardXbox()
         return config.GaiShiXiaoJi()
 
