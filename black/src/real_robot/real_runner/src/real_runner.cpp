@@ -43,6 +43,7 @@ const double PITCH_THRESHOLD = M_PI / 6.0;
 namespace {
 constexpr size_t AB5465_FRAME_LEN = 66;
 constexpr uint8_t AB5465_HEADER[4] = {0xAB, 0x54, 0x65, 0x00};
+constexpr bool ENABLE_LATCHED_SAFETY_PROTECTION = false;
 
 struct Ab5465ImuSample {
     float roll = 0.0f;
@@ -106,6 +107,12 @@ bool hasAb5465Header(const std::vector<uint8_t>& data) {
 class RealRunner : public rclcpp::Node {
 public:
     RealRunner() : Node("realRunner"), SerialPack_("/dev/leg_0", "/dev/leg_1", "/dev/leg_2", "/dev/leg_3"),_lowState(motorNum),_lowCmd(motorNum) {
+        utils::SafetyStateManager::getInstance().setProtectionEnabled(
+            ENABLE_LATCHED_SAFETY_PROTECTION);
+        RCLCPP_WARN(
+            this->get_logger(),
+            "Latched safety protection is %s.",
+            ENABLE_LATCHED_SAFETY_PROTECTION ? "ENABLED" : "DISABLED");
         imu_port_ = this->declare_parameter<std::string>("imu_port", "/dev/IMU_Link");
         imu_baudrate_ = this->declare_parameter<int>("imu_baudrate", 460800);
         imu_vqf_enabled_ = this->declare_parameter<bool>("imu_vqf_enabled", true);

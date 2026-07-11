@@ -20,19 +20,27 @@ public:
 
     void setIsSafe(bool safe);
 
+    void setProtectionEnabled(bool enabled) {
+        protection_enabled_.store(enabled);
+        if (!enabled) {
+            is_safe_.store(true);
+        }
+    }
+
     // 返回 1 表示安全 (OK)，0 表示不安全 (Not OK)
     int safeok() const {
-        return is_safe_.load() ? 1 : 0;
+        return (!protection_enabled_.load() || is_safe_.load()) ? 1 : 0;
     }
 
 private:
-    SafetyStateManager() : is_safe_(true) {}
+    SafetyStateManager() : is_safe_(true), protection_enabled_(true) {}
     ~SafetyStateManager() = default;
 
     SafetyStateManager(const SafetyStateManager&) = delete;
     SafetyStateManager& operator=(const SafetyStateManager&) = delete;
 
     std::atomic<bool> is_safe_; // 线程安全的状态标志
+    std::atomic<bool> protection_enabled_;
 };
 
 // 暴露给 real_runner 调用的接口函数

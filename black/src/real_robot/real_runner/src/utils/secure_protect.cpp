@@ -3,6 +3,10 @@
 namespace utils {
 
 void SafetyStateManager::setIsSafe(bool safe) {
+    if (!protection_enabled_.load()) {
+        is_safe_.store(true);
+        return;
+    }
     bool previous_safe = is_safe_.load();
     is_safe_.store(safe);
     
